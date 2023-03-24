@@ -21,4 +21,8 @@ This setup uses the following plugins:
 
 # Math links
 
+This setup includes a Telescope picker that creates mathlinks in obsidian using luasnip.
+At the beginning of each file there is a metadata `mathlink` tag where possible "math aliases" are stored.
+When using the telescope picker the mathlink gets input as a luasnip snippet.
+
 ![](images/mathlink_1.png)
