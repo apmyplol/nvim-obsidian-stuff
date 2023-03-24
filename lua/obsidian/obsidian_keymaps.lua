@@ -5,7 +5,7 @@ if not status_ok then
     return
 end
 
-local obsidian = require "main.obsidian.obsidian"
+local obsidian = require "obsidian.obsidian"
 
 local init_autocmd = function()
     vim.opt.shiftwidth = 3

@@ -1,11 +1,3 @@
-vim.api.nvim_create_user_command("Upper", function(opts)
-  local pos =
-  vim.api.nvim_command_output [[echo join(map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")'), ' > ')]]
-  if string.find(pos, "VimwikiEqIn") or string.find(pos, "textSnipTEX") then
-    print "Insideeee"
-  end
-end, { nargs = 0 })
-
 local pickers = require "telescope.pickers"
 local builtin = require "telescope.builtin"
 local finders = require "telescope.finders"
