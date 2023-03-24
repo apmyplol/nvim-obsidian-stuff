@@ -25,4 +25,20 @@ This setup includes a Telescope picker that creates mathlinks in obsidian using 
 At the beginning of each file there is a metadata `mathlink` tag where possible "math aliases" are stored.
 When using the telescope picker the mathlink gets input as a luasnip snippet.
 
+`mathlink` metadata:
+![](images/mathlink_dimension.png)
+
+actual mathlink with preview:
+The code that is used to generate the math link is highlighted on the left, the output in obsidian is on the right.
+
+![](images/mathlink_both.png)
 ![](images/mathlink_1.png)
+
+Note: hovering over the link in obsidian does not show a preview. Only clicking on the link opens the corresponding file.
+
+# Todo
++ add more obsidian syntax
++ obsidian plugin to show preview of file when hovering over mathlink
+
+
+
