@@ -411,7 +411,7 @@ M.nonwiki = function(mode)
   -- create entries manually to be able to search for aliases
   local entries = {}
   local full_search =
-  vim.fn.system [[find -type f -not -path "./7Sem/nlp/python/*" -path "./*Sem/*" -o -path "./Bilder/*" -o -path "./notes/*"]]
+      vim.fn.system [[find -type f -not -path "./7Sem/nlp/python/*" -path "./*Sem/*" -o -path "./Bilder/*" -o -path "./notes/*"]]
 
   -- loop over all files and their aliases
   for str in full_search:gmatch "([^\n]+)\n" do
@@ -456,15 +456,17 @@ M.nonwiki = function(mode)
 end
 
 M.preview_image = function(delete)
+  if vim.env.TERM ~= "xterm-kitty" then
+    print("not using kitty!")
+    return
+  end
   local status_ok, himage = pcall(require, "hologram.image")
   if not status_ok then
     return
   end
   local line = vim.api.nvim_get_current_line()
   -- s:match("%[([^[%s]+)[[|]")
-  local filename = line:match "%[%[([^%s|%]]+)"
-
-  print(filename)
+  local filename = line:match "%[%[([^|%]]+)":gsub(" ", "\\ ")
 
   local line_num = vim.api.nvim_win_get_cursor(vim.api.nvim_get_current_win())[1]
 
@@ -480,7 +482,7 @@ M.preview_image = function(delete)
   image:display(line_num, 0, buf, {})
   if delete then
     vim.defer_fn(function()
-        image:delete(0, {free = true})
+      image:delete(0, { free = true })
     end, 5000)
   end
 end
@@ -488,14 +490,14 @@ end
 M.enter_key = function()
   local first_10_lines = vim.api.nvim_buf_get_lines(0, 0, 10, false)
   local yaml = table.concat(first_10_lines, "\n"):match("^%-%-%-\n(.*)%-%-%-")
-  local _,yaml_length = string.gsub(yaml, "\n", "\n")
+  local _, yaml_length = string.gsub(yaml, "\n", "\n")
   vim.api.nvim_command("VimwikiFollowLink")
   if yaml and vim.api.nvim_buf_line_count(0) == 1 then
-    local input_tab = {"---"}
+    local input_tab = { "---" }
     for i = 1, yaml_length do
-      input_tab[#input_tab+1] = first_10_lines[i+1]
+      input_tab[#input_tab + 1] = first_10_lines[i + 1]
     end
-    input_tab[#input_tab+1] = "---"
+    input_tab[#input_tab + 1] = "---"
     vim.api.nvim_buf_set_lines(0, 0, 0, false, input_tab)
   end
 end
