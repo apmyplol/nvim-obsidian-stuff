@@ -69,25 +69,36 @@ for word, icon in pairs(callouts) do
 end
 
 -- callout header line, header (the thing that defines the type of callout) and header "title"
-vim.cmd "syntax match ObsCalloutHead /\\[[^\\]]*/me=e+2,he=e+2 contains=@ObsCalloutIcons contained conceal"
+vim.cmd "syntax match ObsCalloutHead /\\[![^\\]]*/me=e+2,he=e+2 contains=@ObsCalloutIcons contained conceal"
 vim.cmd [[syntax match ObsCalloutTitle /[^]+-]\+$/ contains=@mathjax contained]]
-vim.cmd [[syntax match ObsCalloutHeadline /^>\s\[.*/ contains=ObsCalloutHead,ObsCalloutTitle contained]]
+vim.cmd [[syntax match ObsCalloutHeadline /^>\s\[!.*/ contains=ObsCalloutHead,ObsCalloutTitle contained]]
 keywords[#keywords + 1] = "ObsCalloutTitle"
 keywords[#keywords + 1] = "ObsCalloutHeadline"
 
 -- finally define callouts
-vim.cmd [[syntax region ObsCallout start=/^>\s\[/ end=/^>\s[^[].*$\n[^>]/me=e-1 contains=ObsCalloutHeadline,ObsLink,@mathjax keepend fold nextgroup=ObsTextBlockRef]]
+vim.cmd [[syntax region ObsCallout start=/^>\s\[/ end=/^>\s[^[].*$\n[^>]/me=e-1 contains=ObsCalloutHeadline,@ObsLinks,@mathjax keepend fold nextgroup=ObsTextBlockRef]]
 keywords[#keywords + 1] = "ObsCallout"
 
 -- quotes
-vim.cmd [[syntax region ObsQuote start=/^>\s[^[]/ end=/^>\s[^[]*\n\([^>]\|\n\)/me=e-1 fold contains=ObsLink,@mathjax,ObsCalloutHeadline keepend nextgroup=ObsTextBlockRef]]
+vim.cmd [[syntax region ObsQuote start=/^>\s[^[]/ end=/^>\s[^[]*\n\([^>]\|\n\)/me=e-1 fold contains=@ObsLinks,@mathjax,ObsCalloutHeadline keepend nextgroup=ObsTextBlockRef]]
 keywords[#keywords + 1] = "ObsQuote"
 
 -- Wikilinks with [[link|rename]] form
 vim.cmd [[syntax region ObsLink matchgroup=ObsLinkBraces start =/\[\[/ end=/\]\]/ contains=ObsLinkDest,ObsLinkName,ObsLinkNoRename oneline concealends]]
 vim.cmd "syntax match ObsLinkDest /\\[[^]|[]\\+[|]\\=/ms=s+1,lc=1 contained nextgroup=ObsLinkName conceal"
-vim.cmd "syntax match ObsLinkName /|[^]]\\+\\]/ms=s+1,me=e-1,ms=s+1,he=e-1,lc=1 contained"
-vim.cmd [[syntax match ObsLinkNoRename /\[[^]|[]\+\]/ms=s+1,me=e-1,lc=1 contained]]
+vim.cmd "syntax match ObsLinkName /|[^]]\\+\\]\\]/ms=s+1,me=e-2,ms=s+1,he=e-2,lc=1 contained"
+vim.cmd [[syntax match ObsLinkNoRename /\[\[[^]|[]\+\]\]/ms=s+2,me=e-2,lc=2 contained]]
+
+-- wikilinks with [rename](link) form
+vim.cmd "syntax region ObsLinkRName matchgroup=ObsLinkRNameBraces start=/\\[[^[]/rs=e-1 end=/\\][^]]/me=e-1 oneline nextgroup=ObsLinkRDest concealends"
+vim.cmd "syntax region ObsLinkRDest matchgroup=ObsLinkRDestBraces start=/\\](/ms=s+1,lc=1 end=/)/ conceal"
+vim.cmd "syntax region ObsLinkRNoRename matchgroup=ObsLinkRNoRenameBraces start=/\\[\\](/ end=/)/ concealends"
+-- define highlights for links with this form
+vim.cmd("hi def link ObsLinkRName ObsLinkName")
+vim.cmd("hi def link ObsLinkRDest ObsLinkDest")
+vim.cmd("hi def link ObsLinkRNoRename ObsLinkNoRename")
+
+vim.cmd "syntax cluster ObsLinks contains=ObsLink,ObsLinkDest,ObsLinkName,ObsLinkNoRename,ObsLinkRDest,ObsLinkRName,ObsLinkRNoRename"
 
 -- tags
 vim.cmd [[syntax match ObsTag /#[^# ]\+/]]
