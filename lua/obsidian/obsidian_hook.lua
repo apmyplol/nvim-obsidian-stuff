@@ -12,7 +12,7 @@ return function()
         return
     end
     clipimage.setup {
-        vimwiki = {
+        obsidian = {
             img_dir = { "Bilder" },
             img_dir_txt = "",
             affix = "![[%s]]",

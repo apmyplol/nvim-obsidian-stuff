@@ -4,6 +4,7 @@ vim.cmd "let b:current_syntax=''"
 -- syntax für liste
 -- stichpunkte
 -- Wenn man enter in einer Liste drückt -> neue Zeile fängt mit "-" an
+-- Rotatorenmanschette.md Highlight error in 79 bei den links in der Tabelle
 
 ---------------------------------- obsidian syntax stuff ------------------------------------
 
@@ -76,11 +77,11 @@ keywords[#keywords + 1] = "ObsCalloutTitle"
 keywords[#keywords + 1] = "ObsCalloutHeadline"
 
 -- finally define callouts
-vim.cmd [[syntax region ObsCallout start=/^>\s\[/ end=/^>\s[^[].*$\n[^>]/me=e-1 contains=ObsCalloutHeadline,@ObsLinks,@mathjax keepend fold nextgroup=ObsTextBlockRef]]
+vim.cmd [[syntax region ObsCallout start=/^>\s\[/ end=/^>\s[^[].*$\n\([^>]\|\n\)/me=e-1 contains=ObsCalloutHeadline,@ObsLinks,@mathjax keepend fold nextgroup=ObsTextBlockRef]]
 keywords[#keywords + 1] = "ObsCallout"
 
 -- quotes
-vim.cmd [[syntax region ObsQuote start=/^>\s[^[]/ end=/^>\s[^[]*\n\([^>]\|\n\)/me=e-1 fold contains=@ObsLinks,@mathjax,ObsCalloutHeadline keepend nextgroup=ObsTextBlockRef]]
+vim.cmd [[syntax region ObsQuote start=/^>\s[^[]/ end=/^>\s[^[]*\n\([^>]\|\n\)/re=e-2,me=e-2,lc=3 fold contains=@ObsLinks,@mathjax,ObsCalloutHeadline keepend nextgroup=ObsTextBlockRef]]
 keywords[#keywords + 1] = "ObsQuote"
 
 -- Wikilinks with [[link|rename]] form
@@ -130,13 +131,14 @@ vim.cmd "unlet b:current_syntax"
 vim.cmd "syntax include TexMathDelimTD TexMathDelimTL syntax/tex.vim"
 
 -- obsidian links inside math blocks
-vim.cmd [[syntax region TexLink matchgroup=TexLinkBraces start=/\\href{/ end=/}/ oneline concealends contains=TexLinkDest,TexLinkHide containedin=@texClusterMath]]
-vim.cmd "syntax match TexLinkHide /[^}]*&file=/ contained conceal"
-vim.cmd [[syntax match TexLinkDest /&file=[^}]\+}/ms=s+6,hs=s+6,me=e-1,he=e-1,lc=6 contained conceal]]
+-- vim.cmd [[syntax region TexLink matchgroup=TexLinkBraces start=/\\href{/ end=/}/ oneline concealends contains=TexLinkDest,TexLinkHide containedin=@texClusterMath]]
+-- vim.cmd "syntax match TexLinkHide /[^}]*&file=/ contained conceal"
+-- vim.cmd [[syntax match TexLinkDest /&file=[^}]\+}/ms=s+6,hs=s+6,me=e-1,he=e-1,lc=6 contained conceal]]
 keywords[#keywords + 1] = "TexLink"
+vim.cmd "syntax match TexLink /\\href{.\\{-}}{.\\{-}}/"
 
 -- mathjax syntax groups
-vim.cmd [[syntax region MathjaxInline matchgroup=MathjaxInlineDelim start=/\$/ end=/\$/ contains=@texClusterMath concealends]]
+vim.cmd [[syntax region MathjaxInline matchgroup=MathjaxInlineDelim start=/\$/ms=e-1 end=/\$/ms=s-1 contains=@texClusterMath concealends]]
 vim.cmd [[syntax region MathjaxBlock matchgroup=MathjaxBlockDelim start=/\$\$/ end=/\$\$/ contains=@texClusterMath keepend concealends]]
 vim.cmd "syntax cluster mathjax contains=MathjaxBlock,MathjaxInline"
 
