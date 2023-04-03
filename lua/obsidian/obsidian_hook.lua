@@ -5,6 +5,8 @@ return function()
     vim.opt.tabstop = 3
     vim.opt.wrap = false
 
+    vim.cmd("cd /home/afa/uni/wiki/")
+
     -- when going into workspace wiki then change the clipboard image path
     local status_ok, clipimage = pcall(require, "clipboard-image")
     if not status_ok then
