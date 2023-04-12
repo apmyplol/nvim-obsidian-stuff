@@ -487,19 +487,4 @@ M.preview_image = function(delete)
   end
 end
 
-M.enter_key = function()
-  local first_10_lines = vim.api.nvim_buf_get_lines(0, 0, 10, false)
-  local yaml = table.concat(first_10_lines, "\n"):match("^%-%-%-\n(.*)%-%-%-")
-  local _, yaml_length = string.gsub(yaml, "\n", "\n")
-  vim.api.nvim_command("VimwikiFollowLink")
-  if yaml and vim.api.nvim_buf_line_count(0) == 1 then
-    local input_tab = { "---" }
-    for i = 1, yaml_length do
-      input_tab[#input_tab + 1] = first_10_lines[i + 1]
-    end
-    input_tab[#input_tab + 1] = "---"
-    vim.api.nvim_buf_set_lines(0, 0, 0, false, input_tab)
-  end
-end
-
 return M

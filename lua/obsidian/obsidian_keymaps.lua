@@ -1,4 +1,5 @@
 local obsidian = require "obsidian.obsidian"
+local keymap_functions = require "obsidian.keymap_functions"
 
 local status_ok, which_key = pcall(require, "which-key")
 if not status_ok then
@@ -6,7 +7,7 @@ if not status_ok then
 end
 
 which_key.register {
-    ["<CR>"] = { obsidian.enter_key, "Vimwiki Follow Link" },
+    ["<CR>"] = { keymap_functions.enter_key_normal, "Vimwiki Follow Link" },
     h = {
         function()
             obsidian.preview_image(true)
@@ -39,6 +40,7 @@ which_key.register({
 }, { mode = "v", noremap = true, silent = true, nowait = true })
 
 which_key.register({
+    ["<CR>"] = { keymap_functions.enter_key_insert , "Vimwiki Enter autocomplete" },
     ["<c-u>"] = { obsidian.fileref_popup, "wikilink autocomplete" },
     ["<c-z>"] = { obsidian.mathlink, "mathlink autocomplete" },
 }, { mode = "i", noremap = true, silent = true, nowait = true })
