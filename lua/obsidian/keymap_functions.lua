@@ -32,12 +32,12 @@ M.enter_key_insert = function()
     print(line)
     m1, m2 = reg:match_str(line)
     -- local cur_pos = vim.api.nvim_win_get_cursor(0)[1]
-    --
-    vim.cmd "normal o"
+    
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "n", false)
     if m1 ~= m2 then
         local subline = line:sub(m1, m2)
         subline = subline:match "%d" and subline:gsub("%d", tonumber(subline:match "%d") + 1) or subline
-        vim.api.nvim_put({ subline }, "c", true, true)
+        vim.api.nvim_feedkeys(subline, "n", false)
     end
 end
 
