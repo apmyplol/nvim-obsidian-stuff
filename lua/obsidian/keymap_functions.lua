@@ -29,10 +29,8 @@ end
 M.enter_key_insert = function()
     local reg = vim.regex [[^\(> \)\?\(\d. \|[+-] \)\?]]
     local line = vim.api.nvim_get_current_line()
-    print(line)
     m1, m2 = reg:match_str(line)
-    -- local cur_pos = vim.api.nvim_win_get_cursor(0)[1]
-    
+
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "n", false)
     if m1 ~= m2 then
         local subline = line:sub(m1, m2)

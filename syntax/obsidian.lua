@@ -10,6 +10,7 @@ vim.cmd("syntax iskeyword @,48-57,a-z,A-Z,192-255,.,+,-,>")
 -- syntax für liste
 -- stichpunkte
 -- Wenn man enter in einer Liste drückt -> neue Zeile fängt mit "-" an
+-- Zusammenhang: [!important]+ funktioniert unter zeile 20 iwie nicht
 
 ---------------------------------- obsidian syntax stuff ------------------------------------
 
