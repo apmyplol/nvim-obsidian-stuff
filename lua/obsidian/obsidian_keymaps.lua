@@ -41,6 +41,6 @@ which_key.register({
 
 which_key.register({
     ["<CR>"] = { keymap_functions.enter_key_insert , "Vimwiki Enter autocomplete" },
-    ["<c-u>"] = { obsidian.fileref_popup, "wikilink autocomplete" },
+    ["<c-u>"] = { obsidian.ref_file, "wikilink autocomplete" },
     ["<c-z>"] = { obsidian.mathlink, "mathlink autocomplete" },
 }, { mode = "i", noremap = true, silent = true, nowait = true })

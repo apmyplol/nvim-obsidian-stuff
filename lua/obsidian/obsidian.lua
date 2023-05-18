@@ -1,25 +1,34 @@
 local pickers = require "telescope.pickers"
-local builtin = require "telescope.builtin"
 local finders = require "telescope.finders"
 local conf = require("telescope.config").values
 
 local actions = require "telescope.actions"
 local action_state = require "telescope.actions.state"
 
+local entry_display = require "telescope.pickers.entry_display"
+
+-- displayer for obsidian telescope thing
+-- has two columns: filename and alias that is displayed
+local displayer = entry_display.create {
+    seperator = "|",
+    items = {
+        { width = 55 },
+        { remaining = true },
+    },
+}
+
+local make_display = function(entry)
+    if not entry.fileref then
+        return displayer { entry.ordinal, "" }
+    end
+    local first_field = entry.delim and entry.delim .. entry.ordinal or entry.ordinal
+    return displayer {
+        first_field, entry.filename,
+    }
+end
+
 local M = {}
 
-local find_command = {
-    "rg",
-    "--files",
-    "--ignore-file",
-    ".rgignore",
-    -- "&&",
-    -- "rg",
-    -- "-e",
-    -- "'aliases: (.+)'",
-    -- "--ignore-file",
-    -- ".rgignore",
-}
 
 -- function for tabcompletion in telescope
 local tabcomplete = function(prompt_bufnr)
@@ -30,7 +39,7 @@ local tabcomplete = function(prompt_bufnr)
         return
     end
     local prompt = action_state.get_current_picker(prompt_bufnr).sorter._discard_state.prompt
-    local text = selected_entry.display
+    local text = selected_entry.ref_code
     -- if prompt has text then remove the text
     if prompt ~= "" then
         vim.api.nvim_input "<ESC>"
@@ -134,7 +143,6 @@ local obsidian_rename = function(inp_fname)
                     local fileref = true
                     -- what to attach to the filename in the reference
                     local lattach = ""
-                    local display = ""
                     local mathref = false
                     -- if entry is the filename, then attach nothing, and set filereference to true
                     if entry == fname then
@@ -154,12 +162,13 @@ local obsidian_rename = function(inp_fname)
                     end
                     return {
                         -- attach what is being displayed
-                        display = display,
+                        display = entry,
                         attach = lattach,
                         ordinal = entry,
                         filename = fname,
                         fileref = fileref,
                         mathref = mathref,
+                        ref_code = fname .. lattach,
                     }
                 end,
             },
@@ -216,7 +225,7 @@ function M.fileref_popup(opts)
     -- loop over all files and their aliases
     for str in full_search:gmatch "([^\n]+)\n" do
         -- split stirng into filename and aliases
-        local file, aliases = str:match "(.*):aliases:(.*)"
+        local file, aliases = str:match "(.*):aliases:%s?(.*)"
         -- add file without | as entry
         local fname = file:match "([^/.]+)%.(.*)$"
         entries[#entries + 1] = { fname, "", file }
@@ -240,13 +249,21 @@ function M.fileref_popup(opts)
                 results = entries,
                 entry_maker = function(entry)
                     if entry[2] == "" then
-                        return { display = entry[1], ordinal = entry[1], alias = false, filename = entry[3] }
+                        return {
+                            display = make_display,
+                            ordinal = entry[1],
+                            alias = false,
+                            filename = entry[3],
+                            ref_code = entry[1],
+                        }
+                    -- return { display = entry[1], ordinal = entry[1], alias = false, filename = entry[3] }
                     else
                         return {
-                            display = entry[1] .. "|" .. entry[2],
-                            ordinal = entry[1] .. " " .. entry[2],
+                            display = make_display,
+                            ordinal = entry[2],
                             alias = true,
                             filename = entry[3],
+                            ref_code = entry[1] .. "|" .. entry[2],
                         }
                     end
                 end,
@@ -340,8 +357,119 @@ M.mathlink = function(opts)
         :find()
 end
 
-M.findfile = function(mode)
+M.ref_file = function(opts)
     opts = opts or {}
+    local full_search = vim.fn.system [[rg -e 'aliases:' -e '^\^' -N --ignore-file .rgignore]]
+    print(vim.inspect(full_search))
+    entries = {}
+    local currfile = ""
+    for line in full_search:gmatch ".-\n" do
+        line = line:gsub("\n", "")
+        -- have to check for different types of lines: filename, aliases, headings and blocks refs
+        -- if at first line where filename is then init variable filename
+        local filename = line:match "(.-)%.md"
+
+        -- add entry for filename with removed "_"
+        -- entries have the form {filename, seperator, addition, fileref=true/false}
+        if currfile ~= filename then
+            if filename:find "_" then
+                entries[#entries + 1] = { filename, "|", filename:gsub("_", " "), true }
+            else
+                entries[#entries + 1] = { filename, "", "", true }
+            end
+            currfile = filename
+        end
+
+        -- do stuff for aliases
+        if line:match "aliases" then
+            for alias in line:gsub(".-aliases:%s?", ""):gsub("\n", ""):gsub(",%s", "~"):gmatch "[^~]+" do
+                if alias ~= "" then
+                    entries[#entries + 1] = { filename, "|", alias, true }
+                end
+            end
+        end
+
+        -- headings
+        if line:match "#" then
+            entries[#entries + 1] = { filename, "#", line:gsub(".+#", ""), true }
+        end
+
+        -- blocks
+        if line:match "%^" then
+            entries[#entries + 1] = { filename, "#^", line:gsub(".+%^", ""), true }
+        end
+    end
+
+    -- entry creation done, create telescope picker
+    pickers
+        .new(opts, {
+            prompt_title = "Open File",
+            finder = finders.new_table {
+                results = entries,
+                entry_maker = function(entry)
+                    local ordinal = entry[2] == "" and entry[1] or entry[3]
+                    -- if entry[4] then
+                    -- return { display = make_display, ordinal = entry[3] , attach=entry[2], content=entry[3], alias = entry[4], filename = entry[1]}
+                    -- else
+                    return {
+                        display = make_display,
+                        ordinal = ordinal,
+                        delim = entry[2],
+                        attach = entry[3],
+                        fileref = entry[4],
+                        filename = entry[1],
+                    }
+                    -- end
+                end,
+            },
+            sorter = conf.file_sorter(opts),
+            attach_mappings = function(prompt_bufnr, map)
+                actions.select_default:replace(function()
+                local prompt = action_state.get_current_picker(prompt_bufnr).sorter._discard_state.prompt
+                local entry = action_state.get_selected_entry()
+                    actions.close(prompt_bufnr)
+                    -- if local prompt contains | then the text was probably completed using tab
+                    -- -> do not open obsidian rename window, just input the text
+
+                    -- enter on normal file with alias -> input text
+                    -- enter on block -> luasnip thing
+                    -- enter on prompt with | -> input text
+                    local write_text = ""
+                    if prompt:find "|" then
+                        write_text = "[[" .. prompt .. "]] "
+                        return
+                    end
+
+                    write_text = entry.filename .. entry.delim .. entry.attach
+
+                    if entry.delim:match "#" then
+                        vim.fn.setreg("m", "[[" .. write_text .. "|$rename" .. "]]$")
+                        require("luasnip.extras.otf").on_the_fly "m"
+                        return
+                    end
+
+                    vim.api.nvim_put({ "[[" .. write_text .. "]]" }, "", false, true)
+                    vim.api.nvim_feedkeys("a", "n", false)
+                end)
+                map("i", "<C-CR>", function()
+                    local entry = action_state.get_selected_entry()
+                    actions.close(prompt_bufnr)
+                    vim.fn.setreg("m", "[[" .. entry.filename .. "|$rename" .. "]]$")
+                    require("luasnip.extras.otf").on_the_fly "m"
+                end)
+
+                -- autocomplete prompt according to the entry that is selected
+                map("i", "<Tab>", function()
+                    tabcomplete(prompt_bufnr)
+                end)
+                return true
+            end,
+        })
+        :find()
+end
+
+M.findfile = function(mode)
+    local opts = opts or {}
 
     -- create entries manually to be able to search for aliases
     local entries = {}
@@ -349,7 +477,7 @@ M.findfile = function(mode)
     -- loop over all files and their aliases
     for str in full_search:gmatch "([^\n]+)\n" do
         -- split stirng into filename and aliases
-        local file, aliases = str:match "(.*):aliases:(.*)"
+        local file, aliases = str:match "(.*):aliases:%s?(.*)"
         -- add file without | as entry
         local fname = file:match "([^/.]+)%.(.*)$"
         entries[#entries + 1] = { fname, "", file }
@@ -373,12 +501,12 @@ M.findfile = function(mode)
                 results = entries,
                 entry_maker = function(entry)
                     if entry[2] == "" then
-                        return { display = entry[1], ordinal = entry[1], alias = false, filename = entry[3] }
+                        return { display = make_display, ordinal = entry[1], fileref = false, filename = entry[3] }
                     else
                         return {
-                            display = entry[1] .. "|" .. entry[2],
-                            ordinal = entry[1] .. " " .. entry[2],
-                            alias = true,
+                            display = make_display,
+                            ordinal = entry[2],
+                            fileref = true,
                             filename = entry[3],
                         }
                     end
