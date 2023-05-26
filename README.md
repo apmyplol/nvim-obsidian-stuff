@@ -30,10 +30,11 @@ When using the telescope picker the mathlink gets input as a luasnip snippet.
 
 actual mathlink with preview:
 The code that is used to generate the math link is highlighted on the left, the output in obsidian is on the right.
+The pink highlighted markdown is being hovered over in the picture.
 
 ![](images/mathlink_both.png)
 
-Note: In order to use the math links in obsidian see ![obsidian-mathlinks](https://github.com/apmyplol/obsidian-mathlinks).
+Note: In order to use the math links in obsidian see [obsidian-mathlinks](https://github.com/apmyplol/obsidian-mathlinks).
 
 
 # Todo
