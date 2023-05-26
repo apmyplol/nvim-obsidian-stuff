@@ -105,31 +105,30 @@ end
 
 -- prompt that renames a file or selects a heading / block in a file and opens another prompt to rename the heading / block reference
 local obsidian_rename = function(inp_fname)
-    local fname, ext = inp_fname:match "([^/.]+)%.(.*)$"
-    fname = ext == "md" and fname or fname .. "." .. ext
-    -- only search for aliases and ^^ things in file if markdown file
-    -- but either way add fname as a result
+    local fname = inp_fname
+    inp_fname = inp_fname .. ".md"
+    -- but either way add the filename as a result
     local res = { fname }
 
-    if ext == "md" then
-        local alias_match = vim.fn.system("rg -e 'aliases:' " .. inp_fname:gsub(" ", "\\ "))
-        local block_ref = vim.fn.system("rg -e '^\\^' " .. inp_fname:gsub(" ", "\\ "))
-        local heading_ref = vim.fn.system("rg -e '^#' " .. inp_fname:gsub(" ", "\\ "))
 
-        -- add aliases to result list
-        for str in alias_match:gsub("aliases:%s?", ""):gsub("\n", ""):gsub(",%s", "~"):gmatch "[^~]+" do
-            if str ~= "" then
-                res[#res + 1] = str
-            end
-        end
+    -- search for aliases, blocks and headings
+    local alias_match = vim.fn.system("rg -e 'aliases:' " .. inp_fname:gsub(" ", "\\ "))
+    local block_ref = vim.fn.system("rg -e '^\\^' " .. inp_fname:gsub(" ", "\\ "))
+    local heading_ref = vim.fn.system("rg -e '^#' " .. inp_fname:gsub(" ", "\\ "))
 
-        for str in block_ref:gmatch "[^\n]+" do
+    -- add aliases to result list
+    for str in alias_match:gsub("aliases:%s?", ""):gsub("\n", ""):gsub(",%s", "~"):gmatch "[^~]+" do
+        if str ~= "" then
             res[#res + 1] = str
         end
+    end
 
-        for str in heading_ref:gmatch "[^\n]+" do
-            res[#res + 1] = str
-        end
+    for str in block_ref:gmatch "[^\n]+" do
+        res[#res + 1] = str
+    end
+
+    for str in heading_ref:gmatch "[^\n]+" do
+        res[#res + 1] = str
     end
 
     local opts = {}
@@ -339,7 +338,7 @@ M.mathlink = function(opts)
                         ordinal = entry[1] .. " " .. entry[2],
                         filename = entry[3],
                         math = entry[2],
-                        luasnip = "\\href{obsidian://open?vault=wiki&file=" .. entry[1] .. "}{" .. entry[2] .. "}",
+                        luasnip = "\\href{" .. entry[1] .. "}{" .. entry[2] .. "}",
                     }
                 end,
             },
@@ -461,6 +460,11 @@ M.ref_file = function(opts)
                 -- autocomplete prompt according to the entry that is selected
                 map("i", "<Tab>", function()
                     tabcomplete(prompt_bufnr)
+                end)
+
+                map("i", "<S-CR>", function()
+                    local filename = action_state.get_selected_entry().filename
+                    obsidian_rename(filename)
                 end)
                 return true
             end,
