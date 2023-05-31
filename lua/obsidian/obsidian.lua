@@ -23,12 +23,29 @@ local make_display = function(entry)
     end
     local first_field = entry.delim and entry.delim .. entry.ordinal or entry.ordinal
     return displayer {
-        first_field, entry.filename,
+        first_field,
+        entry.filename,
+    }
+end
+
+local math_displayer = entry_display.create {
+    seperator = "|",
+    items = {
+        { width = 35 },
+        { width = 35 },
+        { remaining = true },
+    },
+}
+
+local make_math_display = function(entry)
+    return math_displayer {
+        entry.mathlink,
+        entry.filename,
+        entry.block,
     }
 end
 
 local M = {}
-
 
 -- function for tabcompletion in telescope
 local tabcomplete = function(prompt_bufnr)
@@ -109,7 +126,6 @@ local obsidian_rename = function(inp_fname)
     inp_fname = inp_fname .. ".md"
     -- but either way add the filename as a result
     local res = { fname }
-
 
     -- search for aliases, blocks and headings
     local alias_match = vim.fn.system("rg -e 'aliases:' " .. inp_fname:gsub(" ", "\\ "))
@@ -311,17 +327,66 @@ M.mathlink = function(opts)
 
     -- create entries manually to be able to search for aliases
     local entries = {}
-    local full_search = vim.fn.system "rg -e 'mathlink:' --ignore-file .rgignore"
+    local full_search = vim.fn.system "rg -e '^\\^.*mathlink[^:]' -e '^mathlink:' -N --ignore-file .rgignore"
+
     -- loop over all files and their aliases
-    for str in full_search:gmatch "([^\n]+)\n" do
-        -- split stirng into filename and aliases
-        local file, mathlinks = str:match "(.*):mathlink:%s?(.*)"
-        -- add file without | as entry
-        local fname = file:match("([^/.]+)%.(.*)$"):gsub(" ", "%20")
-        -- loop over all aliases and add {filename, alias} as entry
-        for mathlink in mathlinks:gsub("\n", ""):gsub(",,%s", "~"):gmatch "[^~]+" do
-            if mathlink ~= "" and mathlink ~= " " then
-                entries[#entries + 1] = { fname, mathlink, file }
+    local currfile = {}
+    local currfname = ""
+    for line in full_search:gmatch ".-\n" do
+        -- get filename
+        local filename = line:match "(.-)%.md"
+
+        -- init step
+        if currfname == "" then
+            currfile = { { filename = filename, block = "" } }
+            currfname = filename
+        end
+
+        if currfname ~= filename then
+            print(vim.inspect(currfile))
+            -- only add file to entries list if there are mathlinks
+            if currfile[1].mathlink ~= nil then
+                for _, v in pairs(currfile) do
+                    entries[#entries + 1] = v
+                end
+            end
+            -- reset currfile & currfname
+            currfile = { { filename = filename, block = "" } }
+            currfname = filename
+        end
+
+        -- if mathlink line add mathlinks to currfile
+        local mathlinks = line:match "mathlink:%s?(.*)"
+        if mathlinks ~= nil and mathlinks ~= "" then
+            local number = 1
+            for mathlink in mathlinks:gsub("\n", ""):gsub("%s,,%s", "~"):gmatch "[^~]+" do
+                if mathlink ~= "" and mathlink ~= " " then
+                    -- init new table for mathlink #number if not already present
+                    if currfile[number] == nil then
+                        -- print("currfile[number] is nil for\n", vim.inspect(currfile), number, "\n")
+                        currfile[number] = { filename = filename, block = "" }
+                    end
+                    currfile[number].mathlink = mathlink
+                    number = number + 1
+                end
+            end
+        end
+
+        -- if line with block add block to mathlinks or init new table with value block
+        local block = line:gsub("\n", ""):match ":(%^.+)"
+        if block then
+            local blocknr, blocknr2 = block:match "(%d)(%d?)$"
+            blocknr = tonumber(blocknr)
+            if currfile[blocknr] == nil then
+                currfile[blocknr] = { filename = filename }
+            end
+            currfile[blocknr].block = "#" .. block
+            if blocknr2 ~= "" then
+                blocknr2 = tonumber(blocknr2)
+                if currfile[blocknr2] == nil then
+                    currfile[blocknr2] = { filename = filename }
+                end
+                currfile[blocknr2].block = "#" .. block
             end
         end
     end
@@ -334,11 +399,12 @@ M.mathlink = function(opts)
                 results = entries,
                 entry_maker = function(entry)
                     return {
-                        display = entry[2] .. " <----- " .. entry[1],
-                        ordinal = entry[1] .. " " .. entry[2],
-                        filename = entry[3],
-                        math = entry[2],
-                        luasnip = "\\href{" .. entry[1] .. "}{" .. entry[2] .. "}",
+                        display = make_math_display,
+                        ordinal = entry.mathlink .. " " .. entry.filename .. " " .. entry.block,
+                        filename = entry.filename,
+                        mathlink = entry.mathlink,
+                        block = entry.block,
+                        luasnip = "\\href{" .. entry.filename .. entry.block .. "}{" .. entry.mathlink .. "}",
                     }
                 end,
             },
@@ -359,7 +425,6 @@ end
 M.ref_file = function(opts)
     opts = opts or {}
     local full_search = vim.fn.system [[rg -e 'aliases:' -e '^\^' -N --ignore-file .rgignore]]
-    print(vim.inspect(full_search))
     entries = {}
     local currfile = ""
     for line in full_search:gmatch ".-\n" do
@@ -424,8 +489,8 @@ M.ref_file = function(opts)
             sorter = conf.file_sorter(opts),
             attach_mappings = function(prompt_bufnr, map)
                 actions.select_default:replace(function()
-                local prompt = action_state.get_current_picker(prompt_bufnr).sorter._discard_state.prompt
-                local entry = action_state.get_selected_entry()
+                    local prompt = action_state.get_current_picker(prompt_bufnr).sorter._discard_state.prompt
+                    local entry = action_state.get_selected_entry()
                     actions.close(prompt_bufnr)
                     -- if local prompt contains | then the text was probably completed using tab
                     -- -> do not open obsidian rename window, just input the text
@@ -562,7 +627,7 @@ M.nonwiki = function(mode)
                 results = entries,
                 entry_maker = function(entry)
                     return {
-                        display = entry[1],
+                        display = entry[2],
                         ordinal = entry[2],
                     }
                 end,
@@ -571,7 +636,6 @@ M.nonwiki = function(mode)
             attach_mappings = function(prompt_bufnr, map)
                 actions.select_default:replace(function()
                     local file = action_state.get_selected_entry().ordinal
-                    print(vim.inspect(file))
                     actions.close(prompt_bufnr)
                     vim.api.nvim_command("!xdg-open '" .. file .. "' &")
                 end)
@@ -604,7 +668,6 @@ M.preview_image = function(delete)
 
     local source = vim.fn.getcwd() .. "/Bilder/" .. filename
 
-    print(source)
     -- local source = 'Bilder/kovkomb_caratheo.png'
     local buf = vim.api.nvim_get_current_buf()
     local image = himage:new(source, {})
